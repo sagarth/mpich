@@ -660,6 +660,24 @@ AS_CASE([$enable_yield],
 
 
 #######################################################################
+## START OF SYSCONF CODE
+#######################################################################
+
+AC_CHECK_HEADERS(sys/sysinfo.h unistd.h)
+
+AC_CHECK_FUNCS(get_nprocs)
+AC_CHECK_DECLS([_SC_NPROCESSORS_ONLN],[],[],[[#include <unistd.h>]])
+
+if test "$ac_cv_func_get_nprocs" = "no" -a "$ac_cv_have_decl__SC_NPROCESSORS_ONLN" = "no"; then
+   AC_MSG_ERROR([Undefined get_nprocs nor _SC_NPROCESSORS_ONLN])
+fi
+
+#######################################################################
+## END OF SYSCONF CODE
+#######################################################################
+
+
+#######################################################################
 ## START OF THREADS CODE
 #######################################################################
 
