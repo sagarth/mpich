@@ -208,6 +208,7 @@ int MPID_Comm_commit_pre_hook(MPIR_Comm * comm)
     /* vci_idx hints defaults */
     comm->hints[MPIR_COMM_HINT_VCI_IDX_SENDER] = MPIDI_VCI_INVALID;
     comm->hints[MPIR_COMM_HINT_VCI_IDX_RECEIVER] = MPIDI_VCI_INVALID;
+    comm->hints[MPIR_COMM_HINT_VCI] = MPIDI_VCI_INVALID;
 
     mpi_errno = MPIDI_NM_mpi_comm_commit_pre_hook(comm);
     MPIR_ERR_CHECK(mpi_errno);
@@ -584,4 +585,6 @@ static void register_comm_hints(MPIR_Comm * comm)
                             MPIDI_set_comm_hint_sender_vci, MPIR_COMM_HINT_TYPE_INT, 0, -1);
     MPIR_Comm_register_hint(MPIR_COMM_HINT_VCI_IDX_RECEIVER, "vci_idx_receiver",
                             MPIDI_set_comm_hint_receiver_vci, MPIR_COMM_HINT_TYPE_INT, 0, -1);
+    MPIR_Comm_register_hint(MPIR_COMM_HINT_VCI, "vci",
+                            MPIDI_set_comm_hint_vci, MPIR_COMM_HINT_TYPE_INT, 0, -1);
 }

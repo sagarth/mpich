@@ -1047,4 +1047,13 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_set_comm_hint_receiver_vci(MPIR_Comm * comm, 
     return MPI_SUCCESS;
 }
 
+MPL_STATIC_INLINE_PREFIX int MPIDI_set_comm_hint_vci(MPIR_Comm * comm, int type, int value)
+{
+    comm->hints[MPIR_COMM_HINT_VCI] %= MPIDI_global.n_vcis;
+    /* Also apply this hint to select sender and reeciver vcis */
+    MPIDI_set_comm_hint_sender_vci(comm, type, value);
+    MPIDI_set_comm_hint_receiver_vci(comm, type, value);
+    return MPI_SUCCESS;
+}
+
 #endif /* CH4_IMPL_H_INCLUDED */
