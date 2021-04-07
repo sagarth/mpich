@@ -73,7 +73,14 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_get_vci(int flag, MPIR_Comm * comm_ptr,
 MPL_STATIC_INLINE_PREFIX int MPIDI_int_to_vci(int i)
 {
     /* Remove the sign bit if present and bound the value within n_vcis */
+#ifdef  MPIDI_OFI_VNI_USE_DOMAIN
+    if (!MPIDI_global.is_initialized)
+        return 0;
+    else
+        return ((i) & ~(1 << (sizeof(int) * 8 - 1))) % MPIDI_global.n_vcis;
+#else
     return ((i) & ~(1 << (sizeof(int) * 8 - 1))) % MPIDI_global.n_vcis;
+#endif
 }
 
 /* Map comm to vci_idx */
