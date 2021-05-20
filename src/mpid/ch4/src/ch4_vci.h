@@ -134,8 +134,10 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_get_sender_vci(MPIR_Comm * comm,
     bool use_user_defined_vci = (comm->hints[MPIR_COMM_HINT_VCI_IDX_SENDER] != MPIDI_VCI_INVALID);
     bool use_tag = comm->hints[MPIR_COMM_HINT_NO_ANY_TAG];
 
+    if (!(comm->comm_kind == MPIR_COMM_KIND__INTRACOMM && !comm->tainted))
+        vci_idx = 0;
     /* Compute vci_idx if user did not provide it */
-    if (!use_user_defined_vci) {
+    else if (!use_user_defined_vci) {
         if (use_tag) {
             vci_idx = MPIDI_map_contextid_rank_tag_to_vci(ctxid_in_effect, receiver_rank, tag);
         } else {
@@ -178,8 +180,10 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_get_receiver_vci(MPIR_Comm * comm,
     bool use_tag = comm->hints[MPIR_COMM_HINT_NO_ANY_TAG];
     bool use_source = comm->hints[MPIR_COMM_HINT_NO_ANY_SOURCE];
 
+    if (!(comm->comm_kind == MPIR_COMM_KIND__INTRACOMM && !comm->tainted))
+        vci_idx = 0;
     /* Compute vci_idx if user did not provide it */
-    if (!use_user_defined_vci) {
+    else if (!use_user_defined_vci) {
         /* If mpi_any_tag and mpi_any_source can be used for recv, all messages
          * should be received on a single vci. Otherwise, messages sent from a
          * rank can concurrently match at different vcis. This can allow a
