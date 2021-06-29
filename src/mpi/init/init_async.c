@@ -45,6 +45,7 @@ cvars:
         For example, thread affinity is "0,1,2,3", 2 progress threads per process and 2 processes per node.
         Progress threads of first local process will be pinned on logical processors "0,1",
         progress threads of second local process - on "2,3".
+        Cannot work together with MPIR_CVAR_NUM_CLIQUES or MPIR_CVAR_ODD_EVEN_CLIQUES.
 
 === END_MPI_T_CVAR_INFO_BLOCK ===
 */
@@ -148,15 +149,38 @@ int MPIR_Init_async_thread(void)
     int mpi_errno = MPI_SUCCESS, thr_err;
     int global_rank, local_rank, local_size, threads_per_node;
     int *thread_affinity = NULL;
+    int num_cliques = 1, affinity_idx;
     MPIR_FUNC_TERSE_STATE_DECL(MPID_STATE_MPIR_INIT_ASYNC_THREAD);
 
     MPIR_FUNC_TERSE_ENTER(MPID_STATE_MPIR_INIT_ASYNC_THREAD);
 
+    /* Consider nodemap cliques when using debugging CVARs */
+    if (MPIR_CVAR_NUM_CLIQUES > 1) {
+        num_cliques = MPIR_CVAR_NUM_CLIQUES;
+    } else if (MPIR_CVAR_ODD_EVEN_CLIQUES) {
+        num_cliques = 2;
+    }
+
+    if (num_cliques > 1 && MPIR_CVAR_CH4_PROGRESS_THREAD_AFFINITY &&
+        strlen(MPIR_CVAR_CH4_PROGRESS_THREAD_AFFINITY) > 0) {
+        fprintf(stderr,
+                "Setting affinity for progress threads cannot work correctly with MPIR_CVAR_NUM_CLIQUES or MPIR_CVAR_ODD_EVEN_CLIQUES.\n");
+    }
+
     global_rank = MPIR_Process.comm_world->rank;
     local_rank =
         (MPIR_Process.comm_world->node_comm) ? MPIR_Process.comm_world->node_comm->rank : 0;
-    local_size =
-        (MPIR_Process.comm_world->node_comm) ? MPIR_Process.comm_world->node_comm->local_size : 1;
+    if (num_cliques > 1) {
+        /* If num_cliques > 1, using local_size from node_comm will have conflict on thread idx.
+         * In multiple nodes case, this would cost extra memory for allocating thread affinity on every
+         * node, but it is okay to solve progress thread oversubscription. */
+        local_size = MPIR_Process.comm_world->local_size;
+    } else {
+        local_size =
+            (MPIR_Process.comm_world->node_comm) ? MPIR_Process.comm_world->
+            node_comm->local_size : 1;
+    }
+
     threads_per_node = local_size;
     thread_affinity = (int *) MPL_malloc(threads_per_node * sizeof(int), MPL_MEM_OTHER);
 
@@ -173,7 +197,15 @@ int MPIR_Init_async_thread(void)
     MPIR_ERR_CHKANDJUMP1(err, mpi_errno, MPI_ERR_OTHER, "**mutex_create", "**mutex_create %s",
                          strerror(err));
 
-    MPL_thread_set_affinity(progress_thread_id, &(thread_affinity[local_rank + 1]), 1, &thr_err);
+    if (num_cliques > 1) {
+        /* In this case, procs on one physical node are partitioned into different virtual nodes,
+         * global_rank should be used to avoid binding progress threads from different ranks to the same core. */
+        affinity_idx = global_rank;
+    } else {
+        affinity_idx = local_rank;
+    }
+
+    MPL_thread_set_affinity(progress_thread_id, &(thread_affinity[affinity_idx]), 1, &thr_err);
     if (MPIR_CVAR_CH4_PROGRESS_THREAD_AFFINITY &&
         strlen(MPIR_CVAR_CH4_PROGRESS_THREAD_AFFINITY) > 0) {
         /* If the user did not specify the affinity, ignore affinity setting failure */
