@@ -784,6 +784,11 @@ case $with_proc_mutex_package in
     # pthread_mutexattr_setpshared is first released in Issue 5
     AC_CHECK_FUNCS(pthread_mutexattr_setpshared)
 
+    AC_CHECK_FUNCS(pthread_setaffinity_np)
+    if test "$ac_cv_func_pthread_setaffinity_np" = "yes" ; then
+      AC_DEFINE(HAVE_PTHREAD_SETAFFINITY_NP,1, [Define if pthread_setaffinity_np is available.])
+    fi
+
     AC_MSG_NOTICE([POSIX will be used for interprocess mutex package.])
     PROC_MUTEX_PACKAGE_NAME=MPL_PROC_MUTEX_PACKAGE_POSIX
   ;;
