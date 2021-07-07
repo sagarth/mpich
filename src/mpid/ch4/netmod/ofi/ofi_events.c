@@ -381,13 +381,14 @@ int MPIDI_OFI_get_huge_event(struct fi_cq_tagged_entry *wc, MPIR_Request * req)
     }
 
     int nic = 0;
-    int vni_src = recv_elem->remote_info.vni_src;
-    int vni_dst = recv_elem->remote_info.vni_dst;
+    /* This is receiver, so dst is local and src is remote */
+    int vni_local = recv_elem->remote_info.vni_dst;
+    int vni_remote = recv_elem->remote_info.vni_src;
     if (MPIDI_OFI_COMM(recv_elem->comm_ptr).enable_striping) {  /* if striping enabled */
-        MPIDI_OFI_cntr_incr(recv_elem->comm_ptr, vni_src, nic);
+        MPIDI_OFI_cntr_incr(recv_elem->comm_ptr, vni_remote, nic);
         if (recv_elem->cur_offset >= MPIDI_OFI_STRIPE_CHUNK_SIZE && bytesLeft > 0) {
             for (nic = 0; nic < MPIDI_OFI_global.num_nics; nic++) {
-                int ctx_idx = MPIDI_OFI_get_ctx_index(recv_elem->comm_ptr, vni_dst, nic);
+                int ctx_idx = MPIDI_OFI_get_ctx_index(recv_elem->comm_ptr, vni_local, nic);
                 remote_key = recv_elem->remote_info.rma_keys[nic];
 
                 bytesLeft = recv_elem->remote_info.msgsize - recv_elem->cur_offset;
@@ -400,7 +401,7 @@ int MPIDI_OFI_get_huge_event(struct fi_cq_tagged_entry *wc, MPIR_Request * req)
                 MPIDI_OFI_CALL_RETRY(fi_read(MPIDI_OFI_global.ctx[ctx_idx].tx, (void *) ((char *) recv_buf + recv_elem->cur_offset),    /* local buffer */
                                              bytesToGet,        /* bytes */
                                              NULL,      /* descriptor */
-                                             MPIDI_OFI_comm_to_phys(recv_elem->comm_ptr, recv_elem->remote_info.origin_rank, nic, vni_dst, vni_src), recv_rbase(recv_elem) + recv_elem->cur_offset,     /* remote maddr */
+                                             MPIDI_OFI_comm_to_phys(recv_elem->comm_ptr, recv_elem->remote_info.origin_rank, nic, vni_local, vni_remote), recv_rbase(recv_elem) + recv_elem->cur_offset,        /* remote maddr */
                                              remote_key,        /* Key */
                                              (void *) &recv_elem->context), nic,        /* Context */
                                      rdma_readfrom, FALSE);
@@ -411,17 +412,17 @@ int MPIDI_OFI_get_huge_event(struct fi_cq_tagged_entry *wc, MPIR_Request * req)
             }
         }
     } else {
-        int ctx_idx = MPIDI_OFI_get_ctx_index(recv_elem->comm_ptr, vni_src, nic);
+        int ctx_idx = MPIDI_OFI_get_ctx_index(recv_elem->comm_ptr, vni_remote, nic);
         remote_key = recv_elem->remote_info.rma_keys[nic];
-        MPIDI_OFI_cntr_incr(recv_elem->comm_ptr, vni_src, nic);
+        MPIDI_OFI_cntr_incr(recv_elem->comm_ptr, vni_remote, nic);
         MPIDI_OFI_CALL_RETRY(fi_read(MPIDI_OFI_global.ctx[ctx_idx].tx,  /* endpoint     */
                                      (void *) ((char *) recv_buf + recv_elem->cur_offset),      /* local buffer */
                                      bytesToGet,        /* bytes        */
                                      NULL,      /* descriptor   */
-                                     MPIDI_OFI_comm_to_phys(recv_elem->comm_ptr, recv_elem->remote_info.origin_rank, nic, vni_src, vni_dst),    /* Destination  */
+                                     MPIDI_OFI_comm_to_phys(recv_elem->comm_ptr, recv_elem->remote_info.origin_rank, nic, vni_local, vni_remote),       /* Destination  */
                                      recv_rbase(recv_elem) + recv_elem->cur_offset,     /* remote maddr */
                                      remote_key,        /* Key          */
-                                     (void *) &recv_elem->context), vni_src, rdma_readfrom,     /* Context */
+                                     (void *) &recv_elem->context), vni_remote, rdma_readfrom,  /* Context */
                              FALSE);
         MPIR_T_PVAR_COUNTER_INC(MULTINIC, nic_recvd_bytes_count[nic], bytesToGet);
         recv_elem->cur_offset += bytesToGet;
