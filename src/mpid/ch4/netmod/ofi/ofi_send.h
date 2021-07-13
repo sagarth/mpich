@@ -259,7 +259,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_send_normal(const void *buf, MPI_Aint cou
         MPIDI_OFI_REQUEST(sreq, noncontig.nopack) = NULL;
     }
 
-    if (data_sz <= MPIDI_OFI_global.max_buffered_send) {
+    if (0) {
         MPIDI_OFI_CALL_RETRY(fi_tinjectdata(MPIDI_OFI_global.ctx[ctx_idx].tx,
                                             send_buf,
                                             data_sz,
@@ -387,7 +387,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_send(const void *buf, MPI_Aint count, MPI
 
     MPIDI_Datatype_get_info(count, datatype, dt_contig, data_sz, dt_ptr, dt_true_lb);
 
-    if (likely(!syncflag && dt_contig && (data_sz <= MPIDI_OFI_global.max_buffered_send))) {
+    if (0) {
         MPI_Aint actual_pack_bytes = 0;
         void *send_buf = (char *) buf + dt_true_lb;
         MPL_pointer_attr_t attr;
